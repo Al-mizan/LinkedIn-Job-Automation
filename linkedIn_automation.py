@@ -66,22 +66,42 @@ class LinkedInAutomation:
     def job_save(self):
         try:
             WebDriverWait(self.driver, 20).until(
-                EC.presence_of_element_located(("css selector", "a.job-card-container__link"))
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "a.job-card-container__link"))
             )
-            elements = self.driver.find_elements(By.CSS_SELECTOR, "a.job-card-container__link")
 
-            for element in elements:
-                job = element.get_attribute("aria-label")
-                if ("AI" or "ai" or "ML" or "ml" or "Python" or "python") in job:
-                    element.click()
-                    WebDriverWait(self.driver, 20).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "button.jobs-save-button"))
-                    )
-                    self.driver.find_element(By.CSS_SELECTOR, "button.jobs-save-button").click()
+            job_links = self.driver.find_elements(By.CSS_SELECTOR, "a.job-card-container__link")
+            print(f"Found {len(job_links)} job cards")
+
+            keywords = ["AI", "ai", "ML", "ml", "Python", "python",
+                        "Artificial Intelligence", "Machine Learning"]
+
+            for link in job_links:
+                job_title = link.get_attribute("aria-label") or ""
+                if any(keyword.lower() in job_title.lower() for keyword in keywords):
+                    try:
+                        print(f"Attempting to save: {job_title}")
+                        link.click()
+                        sleep(2)
+
+                        save_button = WebDriverWait(self.driver, 10).until(
+                            EC.element_to_be_clickable(
+                                (By.CSS_SELECTOR, "button.jobs-save-button:not(.jobs-save-button--saved)")
+                            )
+                        )
+                        save_button.click()
+                        print(f"\nSuccessfully saved: {job_title}")
+                        sleep(2)
+
+                    except Exception as e:
+                        print(f"Failed to save {job_title}: {str(e)}")
+                        self.driver.save_screenshot(f"save_error_{job_title[:10]}.png")
+                        continue
 
         except Exception as e:
-            print(f"Job save failed: {str(e)}")
-            self.driver.save_screenshot("job_save.png")
+            print(f"Fatal error in job_save: {str(e)}")
+            self.driver.save_screenshot("job_save_fatal_error.png")
+            raise
+
 
     def run(self):
         try:
